@@ -3,6 +3,15 @@ Go language (golang) full strength tree structures (ki = tree in Japanese)
 
 GoDoc documentation: https://godoc.org/github.com/rcoreilly/goki/ki
 
+# Map
+
+* `ki` -- core `Ki` interface (`ki.go`) and `Node` struct (`node.go`), plus other supporting players
+  + `kiptr.go` = `KiPtr` struct that supports saving / loading of pointers using paths
+  + `kislice.go` = `KiSlice []Ki` supports saving / loading of Ki objects in a slice, by recording the size and types of elements in the slice -- requires `KiTypes` type registry to lookup types by name
+  + `kitype.go` = `KiType struct of reflect.Type` that supports saving / loading of type information using `KiTypes` type registry
+  + `kitypes.go` = `TypeRegistry` and `KiTypes TypeRegistry` provides name to type map for looking up types by name
+  + `signal.go` = `Signal struct` that can call any number of functions with receiver Ki objects that have been previously `Connect`ed to the signal -- also supports signal type so the same signal sender can send different types of signals over the same connection -- used for signaling changes in tree structure, and more general tree updating signals.
+
 # Motivation
 
 The **Tree** is the most powerful data structure in programming, and it underlies all the best tech, such as the WWW (the DOM is a tree structure), 3D scene graphs (now used for 2D and 3D GUI description in Qt), JSON, XML, SVG, filesystems, programs themselves, etc.  GoKi provides a powerful tree container type, that can support all of these things just by embedding and extending the `Node` struct type that implements the `Ki` interface.

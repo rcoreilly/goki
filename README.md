@@ -3,14 +3,9 @@ Go language (golang) full strength tree structures (ki = tree in Japanese)
 
 GoDoc documentation: https://godoc.org/github.com/rcoreilly/goki/ki
 
-# Map
+# Code Map
 
-* `ki` -- core `Ki` interface (`ki.go`) and `Node` struct (`node.go`), plus other supporting players
-  + `kiptr.go` = `KiPtr` struct that supports saving / loading of pointers using paths
-  + `kislice.go` = `KiSlice []Ki` supports saving / loading of Ki objects in a slice, by recording the size and types of elements in the slice -- requires `KiTypes` type registry to lookup types by name
-  + `kitype.go` = `KiType struct of reflect.Type` that supports saving / loading of type information using `KiTypes` type registry
-  + `kitypes.go` = `TypeRegistry` and `KiTypes TypeRegistry` provides name to type map for looking up types by name
-  + `signal.go` = `Signal struct` that can call any number of functions with receiver Ki objects that have been previously `Connect`ed to the signal -- also supports signal type so the same signal sender can send different types of signals over the same connection -- used for signaling changes in tree structure, and more general tree updating signals.
+* `package ki` -- core `Ki` interface (`ki.go`) and `Node` struct (`node.go`), plus other supporting players
 
 # Motivation
 
@@ -34,9 +29,11 @@ If this project is successful, it might be interesting to consider a possible fu
 
 * Another major issue with Go is support for generics. Generics are most important for containers, and Go's robust collection of native containers has minimized their need, and enabled the language to thrive despite their absence. Following this logic, adding a much more powerful container with appropriate native functionality will go even further toward mitigating the need for generics. If much of the program logic is transforming one tree into another, and defining new Node types etc, then you don't really need generics.
 
-## Links
+# Links
 
-### GUI efforts
+GoKi borrows a lot of ideas and experience from *emergent* and the TA (type access) system: https://grey.colorado.edu/emergent -- TA is basically equivalent to the `reflect` reflection system in Go, and it provides the same kind of generic access to classes in C++ for IO, GUI, etc as reflect does in Go.  So far, it seems that the ki package can replicate much of the 67,438 LOC in emergent's `ta_core` directory using a mere 1,896 LOC!
+
+## GUI efforts
 
 * Shiny (not much progress recently, only works on android?):  https://github.com/golang/go/issues/11818 https://github.com/golang/exp/tree/master/shiny
 

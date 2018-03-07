@@ -1,9 +1,9 @@
-# kig
+# gogi
 Part of the GoKi Go language (golang) full strength tree structure system (ki = tree in Japanese)
 
-`package kig` -- scenegraph based 2D and 3D GUI / graphics system
+`package gogi` -- scenegraph based 2D and 3D GUI / graphics interface (Gi) in Go
 
-GoDoc documentation: https://godoc.org/github.com/rcoreilly/goki/kig
+GoDoc documentation: https://godoc.org/github.com/rcoreilly/goki/gogi
 
 
 # Code Map
@@ -11,7 +11,7 @@ GoDoc documentation: https://godoc.org/github.com/rcoreilly/goki/kig
 
 # Design notes
 
-* `KiG` base node -- todo: maybe think of a better name for whole package?
+* `GiNode` base node 
     + Geom / Transform wrt its *Parent* coord system, and then provides its own Geom wrt its children -- one option is to renormalize with proper aspect ratio, height = 1, width = aspect ratio (or maybe the reverse, whichever makes most sense), but it can be ANYTHING, including a pass-through from parent as another supported default option
     + 2D-based children just use x,y but have full x,y,z coords generically for all
     + events (`MouseEvent`, etc) are specifically connected using `Signal` system from a parent `Window` -- not broadcast generically -- simple method to set that up -- automatically finds parent window etc.

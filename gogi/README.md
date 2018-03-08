@@ -8,35 +8,52 @@ GoDoc documentation: https://godoc.org/github.com/rcoreilly/goki/gogi
 
 # Code Map
 
+* `ginode.go` -- basic GiNode struct
+* `transform.go` -- transform structures
 
 # Design notes
 
-* `GiNode` base node 
-    + Geom / Transform wrt its *Parent* coord system, and then provides its own Geom wrt its children -- one option is to renormalize with proper aspect ratio, height = 1, width = aspect ratio (or maybe the reverse, whichever makes most sense), but it can be ANYTHING, including a pass-through from parent as another supported default option
-    + 2D-based children just use x,y but have full x,y,z coords generically for all
-    + events (`MouseEvent`, etc) are specifically connected using `Signal` system from a parent `Window` -- not broadcast generically -- simple method to set that up -- automatically finds parent window etc.
-	+ maybe want to have a basic 2D and 3D bifurcation KiG2D, KiG3D -- within one RenderPlane, you can only have either 2D or 3D nodes, but not both?  That probably makes sense.
+The 2D Gi is based entirely on the SVG2 spec: https://www.w3.org/TR/SVG2/Overview.html, and renders directly to an Image struct (`Viewport2D`)
 
-* `RenderPlane` node provides an `Image` that sub-nodes can render into, and it caches the results and composts them up onto any parent RenderPlanes, with geom xform etc -- each KiG node probably caches its immediate parent RenderPlane -- akin to Surface in Qt -- prefer renderplane name?
-	+ `RenderPlane2D` -- supports 2D rendering via svg, etc
-	+ `RenderPlane3D` -- supports 3D rendering -- by default via OpenGL but good to keep that general
-	+ basically a node ONLY really cares about its parent renderplane -- that is the sum total of its context dependency -- renderplanes can be infinitely nested and they only care about their parent renderplanes, supporting basic composting, etc via Image
-	+ may need to support some masking stuff etc.  depth order is just order of children?  seems best unless really need something else
+The 3D Gi is based on TBD (will be impl later) and renders directly into a `Viewport3D` offscreen image buffer (OpenGL for now, but with generalization to Vulkan etc).
 
-* `Window` node is a special RenderPlane that grounds out into actual window -- each node can find their parent window -- this is an OpenGL render target as well and provides all the necessary stuff for that -- can only have one window parent -- see RenderPlane
-    + Is the source of events -- has all the Signal objects for each type of event, and nodes connect directly to these to get those events
-    + `WindowOffscreen` for offscreen rendering?  want to support that easily as a root of a scenegraph -- could just be the parent RenderPlane but some stuff for events etc will be looking for a window so we want to support that..
+Any number of such (nested or otherwise) Viewport nodes can be created and they are all then composted into the final underlying bitmap of the Window.
 
-* `Layout` nodes (2D): organize layout of sub-items in various ways..  can support iterative layout 
+Within a given rendering parent (Viewport2D or Viewport3D), only nodes of the appropriate type (`GiNode2D` or `GiNode3D`) may be used -- each has a pointer to their immediate parent viewport (indirectly through a ViewBox in 2D)
 
-* `Text2D` 2d text renderer using std libs (freetype etc) -- include 2D text in 3D world via RenderPlane2D embedded within a RenderPlane3D
+There are nodes to embed a Viewport2D bitmap within a Viewport3D scene, and vice-versa.  For a 2D viewport in a 3D scene, it acts like a texture and can be mapped onto a plane or anything else.  For a 3D viewport in a 2D scene, it just composts into the bitmap directly.
 
-* `Widget` node uses SVG code plus styles in the Props to render 2D GUI interface elements -- draw is all dynamic and exclusively SVG -- need to figure out styling stuff etc
+The overall parent Window can either provide a 2D or 3D viewport, which map directly into the underlying pixels of the window, and provide the "native" mode of the window, for efficiency.
 
-* `Mesh` 3D nodes of various sorts based on standard types in Coin3D and Qt3D
-	+ nodes for creating the opengl rendering scripts (forget the name of it) -- see Qt3D -- this stuff is kind of a pain but also powerful..
+## 2D Design
 
-* `HTML` 2D nodes that basically replicate the DOM!
+* using the `github.com/go-gl/mathgl/mgl32/` math elements (vectors, matricies) which build on the basic `golang.org/x/image/math/f32` vectors -- svg does not seem to have a basic vector type so it uses -x -y, width, height etc
 
-* `TreeView`, `TreeModel` etc -- see about the model / view stuff from Qt
+* SVG names use the lower-case starting camelCase convention, and often contain -'s, so we use a struct tag of svg: to map the UpperCase Go field names to their underlying SVG names for parsing etc.  E.g., use `"{min-x,min-y}"` to label the vector elements of the `Min Vec2` field.
 
+* The SVG default coordinate system has 0,0 at the upper-left.  The default 3D coordinate system flips the Y axis so 0,0 is at the lower left effectively (actually it uses center-based coordinates so 0,0 is in the center of the image, effectively -- everything is defined by the camera anyway)
+
+* Using 64bit floats for coordinates etc because the spec says you need those for the "high quality" transforms, and Go defaults to them, and it just makes life easier -- won't have so crazy many coords in 2D space as we might have in 3D, where 32bit makes more sense and optimizes GPU hardware.
+
+## 3D Design
+
+* keep all the elements separate: geometry, material, transform, etc.  Including shader programs.  Maximum combinatorial flexibility.  not clear if Qt3D really obeys this principle, but Inventor does, and probably other systems do to.
+
+
+# Links
+
+* https://golang.org/pkg/image/
+* https://godoc.org/golang.org/x/image/vector
+* https://godoc.org/github.com/golang/freetype/raster
+* https://github.com/fogleman/gg -- key lib using above -- 2D rendering!
+
+* Shiny (not much progress recently, only works on android?):  https://github.com/golang/go/issues/11818 https://github.com/golang/exp/tree/master/shiny
+
+* Current plans for GUI based on OpenGL: https://docs.google.com/document/d/1mXev7TyEnvM4t33lnqoji-x7EqGByzh4RpE4OqEZck4
+
+* Window events: https://github.com/skelterjohn/go.wde, Material gui https://github.com/skelterjohn/go.wde
+
+* scenegraphs / 3D game engines: 
+	+ https://github.com/g3n/engine
+	+ https://github.com/oakmound/oak
+	+ https://github.com/walesey/go-engine

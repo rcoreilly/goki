@@ -33,15 +33,3 @@ If this project is successful, it might be interesting to consider a possible fu
 
 GoKi borrows a lot of ideas and experience from *emergent* and the TA (type access) system: https://grey.colorado.edu/emergent -- TA is basically equivalent to the `reflect` reflection system in Go, and it provides the same kind of generic access to classes in C++ for IO, GUI, etc as reflect does in Go.  So far, it seems that the ki package can replicate much of the 67,438 LOC in emergent's `ta_core` directory using a mere 1,896 LOC!
 
-## GUI efforts
-
-* Shiny (not much progress recently, only works on android?):  https://github.com/golang/go/issues/11818 https://github.com/golang/exp/tree/master/shiny
-
-* Current plans for GUI based on OpenGL: https://docs.google.com/document/d/1mXev7TyEnvM4t33lnqoji-x7EqGByzh4RpE4OqEZck4
-
-* Window events: https://github.com/skelterjohn/go.wde, Material gui https://github.com/skelterjohn/go.wde
-
-* scenegraphs / 3D game engines: 
-	+ https://github.com/g3n/engine
-	+ https://github.com/oakmound/oak
-	+ https://github.com/walesey/go-engine

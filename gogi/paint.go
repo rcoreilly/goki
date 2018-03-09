@@ -5,13 +5,14 @@
 package gogi
 
 import (
+	"errors"
 	"github.com/golang/freetype/raster"
 	"golang.org/x/image/draw"
 	"golang.org/x/image/font"
-	"golang.org/x/image/font/basicfont"
 	"golang.org/x/image/math/f64"
+	"golang.org/x/image/math/fixed"
 	"image"
-	"image/color"
+	"math"
 )
 
 /*
@@ -51,29 +52,39 @@ type Paint struct {
 	Current    Point2D
 	HasCurrent bool
 	XForm      XFormMatrix2D
+	Bounds     image.Rectangle `desc:"image bounding rectangle -- should be 0,0,size X,Y"`
 	Mask       *image.Alpha
 }
 
-func (p *Paint) Defaults() {
-	p.Stroke.Defaults()
-	p.Fill.Defaults()
-	p.Font.Defaults()
-	p.XForm.Identity()
+func (pc *Paint) Defaults(bound image.Rectangle) {
+	pc.Stroke.Defaults()
+	pc.Fill.Defaults()
+	pc.Font.Defaults()
+	pc.XForm = Identity()
+	pc.Bounds = bound
 }
 
+// update the Paint Stroke and Fill from the properties of a given node -- because Paint stack captures all the relevant inheritance, this does NOT look for inherited properties
+func (pc *Paint) SetFromNode(g *GiNode2D) {
+	pc.Stroke.SetFromNode(g)
+	pc.Fill.SetFromNode(g)
+}
+
+//////////////////////////////////////////////////////////////////////////////////
 // Path Manipulation
 
 // TransformPoint multiplies the specified point by the current transform matrix,
 // returning a transformed position.
-func (pc *Paint2D) TransformPoint(x, y float64) Point2D {
-	return Point2D{pc.XForm.TransformPoint(x, y)}
+func (pc *Paint) TransformPoint(x, y float64) Point2D {
+	tx, ty := pc.XForm.TransformPoint(x, y)
+	return Point2D{tx, ty}
 }
 
 // MoveTo starts a new subpath within the current path starting at the
 // specified point.
 func (pc *Paint) MoveTo(x, y float64) {
 	if pc.HasCurrent {
-		pc.fillPath.Add1(pc.start.Fixed())
+		pc.FillPath.Add1(pc.Start.Fixed())
 	}
 	p := pc.TransformPoint(x, y)
 	pc.StrokePath.Start(p.Fixed())
@@ -167,11 +178,11 @@ func (pc *Paint) NewSubPath() {
 // Path Drawing
 
 func (pc *Paint) capper() raster.Capper {
-	switch pc.lineCap {
+	switch pc.Stroke.Cap {
 	case LineCapButt:
 		return raster.ButtCapper
 	case LineCapRound:
-		return raster.Rounvpapper
+		return raster.RoundCapper
 	case LineCapSquare:
 		return raster.SquareCapper
 	}
@@ -179,17 +190,16 @@ func (pc *Paint) capper() raster.Capper {
 }
 
 func (pc *Paint) joiner() raster.Joiner {
-	switch pc.lineJoin {
-	case LineJoinBevel:
-		return raster.BevelJoiner
+	switch pc.Stroke.Join {
 	case LineJoinRound:
 		return raster.RoundJoiner
+	default: // all others for now.. -- todo: support more joiners!!??
+		return raster.BevelJoiner
 	}
 	return nil
 }
 
 func (pc *Paint) stroke(painter raster.Painter) {
-	pc := pc.CurContext()
 	path := pc.StrokePath
 	if len(pc.Stroke.Dashes) > 0 {
 		path = dashed(path, pc.Stroke.Dashes)
@@ -198,22 +208,23 @@ func (pc *Paint) stroke(painter raster.Painter) {
 		// that result in rendering issues
 		path = rasterPath(flattenPath(path))
 	}
-	r := raster.NewRasterizer(pc.ViewBox.Size.X, pc.ViewBox.Size.Y)
+	sz := pc.Bounds.Size()
+	r := raster.NewRasterizer(sz.X, sz.Y)
 	r.UseNonZeroWinding = true
-	r.AddStroke(path, fix(pc.lineWidth), pc.capper(), pc.joiner())
+	r.AddStroke(path, fix(pc.Stroke.Width), pc.capper(), pc.joiner())
 	r.Rasterize(painter)
 }
 
 func (pc *Paint) fill(painter raster.Painter) {
-	pc := pc.CurContext()
 	path := pc.FillPath
 	if pc.HasCurrent {
 		path = make(raster.Path, len(pc.FillPath))
 		copy(path, pc.FillPath)
 		path.Add1(pc.Start.Fixed())
 	}
-	r := raster.NewRasterizer(pc.ViewBox.Size.X, pc.ViewBox.Size.Y)
-	r.UseNonZeroWinding = (pc.Fill.FillRule == FillRuleNonZero)
+	sz := pc.Bounds.Size()
+	r := raster.NewRasterizer(sz.X, sz.Y)
+	r.UseNonZeroWinding = (pc.Fill.Rule == FillRuleNonZero)
 	r.AddPath(path)
 	r.Rasterize(painter)
 }
@@ -221,31 +232,30 @@ func (pc *Paint) fill(painter raster.Painter) {
 // StrokePreserve strokes the current path with the current color, line width,
 // line cap, line join and dash settings. The path is preserved after this
 // operation.
-func (pc *Paint) StrokePreserve() {
-	pc := pc.CurContext()
-	painter := newPatternPainter(pc.Pixels, pc.Mask, pc.Stroke.Pattern)
+func (pc *Paint) StrokePreserve(im *image.RGBA) {
+	painter := newPaintServerPainter(im, pc.Mask, pc.Stroke.Server)
 	pc.stroke(painter)
 }
 
 // Stroke strokes the current path with the current color, line width,
 // line cap, line join and dash settings. The path is cleared after this
 // operation.
-func (pc *Paint) Stroke() {
-	pc.StrokePreserve()
+func (pc *Paint) StrokeImage(im *image.RGBA) {
+	pc.StrokePreserve(im)
 	pc.ClearPath()
 }
 
 // FillPreserve fills the current path with the current color. Open subpaths
 // are implicity closed. The path is preserved after this operation.
-func (pc *Paint) FillPreserve() {
-	painter := newPatternPainter(pc.Pixels, pc.Mask, pc.fillPattern)
+func (pc *Paint) FillPreserve(im *image.RGBA) {
+	painter := newPaintServerPainter(im, pc.Mask, pc.Fill.Server)
 	pc.fill(painter)
 }
 
 // Fill fills the current path with the current color. Open subpaths
 // are implicity closed. The path is cleared after this operation.
-func (pc *Paint) Fill() {
-	pc.FillPreserve()
+func (pc *Paint) FillImage(im *image.RGBA) {
+	pc.FillPreserve(im)
 	pc.ClearPath()
 }
 
@@ -253,13 +263,13 @@ func (pc *Paint) Fill() {
 // clipping region with the current path as it would be filled by pc.Fill().
 // The path is preserved after this operation.
 func (pc *Paint) ClipPreserve() {
-	clip := image.NewAlpha(image.Rect(0, 0, pc.ViewBox.Size.X, pc.ViewBox.Size.Y))
+	clip := image.NewAlpha(pc.Bounds)
 	painter := raster.NewAlphaOverPainter(clip)
 	pc.fill(painter)
 	if pc.Mask == nil {
 		pc.Mask = clip
 	} else {
-		mask := image.NewAlpha(image.Rect(0, 0, pc.ViewBox.Size.X, pc.ViewBox.Size.Y))
+		mask := image.NewAlpha(pc.Bounds)
 		draw.DrawMask(mask, mask.Bounds(), clip, image.ZP, pc.Mask, image.ZP, draw.Over)
 		pc.Mask = mask
 	}
@@ -269,7 +279,7 @@ func (pc *Paint) ClipPreserve() {
 // mask. It must be the same size as the context, else an error is returned
 // and the mask is unchanged.
 func (pc *Paint) SetMask(mask *image.Alpha) error {
-	if mask.Bounds().Size() != pc.Pixels.Bounds().Size() {
+	if mask.Bounds() != pc.Bounds {
 		return errors.New("mask size must match context size")
 	}
 	pc.Mask = mask
@@ -279,9 +289,9 @@ func (pc *Paint) SetMask(mask *image.Alpha) error {
 // AsMask returns an *image.Alpha representing the alpha channel of this
 // context. This can be useful for advanced clipping operations where you first
 // render the mask geometry and then use it as a mask.
-func (pc *Paint) AsMask() *image.Alpha {
-	mask := image.NewAlpha(pc.Pixels.Bounds())
-	draw.Draw(mask, pc.Pixels.Bounds(), pc.Pixels, image.ZP, draw.Src)
+func (pc *Paint) AsMask(im *image.RGBA) *image.Alpha {
+	mask := image.NewAlpha(pc.Bounds)
+	draw.Draw(mask, im.Bounds(), im, image.ZP, draw.Src)
 	return mask
 }
 
@@ -298,28 +308,18 @@ func (pc *Paint) ResetClip() {
 	pc.Mask = nil
 }
 
+//////////////////////////////////////////////////////////////////////////////////
 // Convenient Drawing Functions
 
-// Clear fills the entire image with the current color.
-func (pc *Paint) Clear() {
-	src := image.NewUniform(pc.color)
-	draw.Draw(pc.Pixels, pc.Pixels.Bounds(), src, image.ZP, draw.Src)
+// Clear fills the entire image with the current fill color.
+func (pc *Paint) Clear(im *image.RGBA) {
+	src := image.NewUniform(pc.Fill.Color)
+	draw.Draw(im, im.Bounds(), src, image.ZP, draw.Src)
 }
 
-// SetPixel sets the color of the specified pixel using the current color.
-func (pc *Paint) SetPixel(x, y int) {
-	pc.Pixels.Set(x, y, pc.color)
-}
-
-// DrawPoint is like DrawCircle but ensures that a circle of the specified
-// size is drawn regardless of the current transformation matrix. The position
-// is still transformed, but not the shape of the point.
-func (pc *Paint) DrawPoint(x, y, r float64) {
-	pc.Push()
-	tx, ty := pc.TransformPoint(x, y)
-	pc.Identity()
-	pc.DrawCircle(tx, ty, r)
-	pc.Pop()
+// SetPixel sets the color of the specified pixel using the current stroke color.
+func (pc *Paint) SetPixel(im *image.RGBA, x, y int) {
+	im.Set(x, y, pc.Stroke.Color)
 }
 
 func (pc *Paint) DrawLine(x1, y1, x2, y2 float64) {
@@ -405,15 +405,15 @@ func (pc *Paint) DrawRegularPolygon(n int, x, y, r, rotation float64) {
 }
 
 // DrawImage draws the specified image at the specified point.
-func (pc *Paint) DrawImage(im image.Image, x, y int) {
-	pc.DrawImageAnchored(im, x, y, 0, 0)
+func (pc *Paint) DrawImage(toIm *image.RGBA, fmIm image.Image, x, y int) {
+	pc.DrawImageAnchored(toIm, fmIm, x, y, 0, 0)
 }
 
 // DrawImageAnchored draws the specified image at the specified anchor point.
 // The anchor point is x - w * ax, y - h * ay, where w, h is the size of the
 // image. Use ax=0.5, ay=0.5 to center the image at the specified point.
-func (pc *Paint) DrawImageAnchored(im image.Image, x, y int, ax, ay float64) {
-	s := im.Bounds().Size()
+func (pc *Paint) DrawImageAnchored(toIm *image.RGBA, fmIm image.Image, x, y int, ax, ay float64) {
+	s := pc.Bounds.Size()
 	x -= int(ax * float64(s.X))
 	y -= int(ay * float64(s.Y))
 	transformer := draw.BiLinear
@@ -421,40 +421,41 @@ func (pc *Paint) DrawImageAnchored(im image.Image, x, y int, ax, ay float64) {
 	m := pc.XForm.Translate(fx, fy)
 	s2d := f64.Aff3{m.XX, m.XY, m.X0, m.YX, m.YY, m.Y0}
 	if pc.Mask == nil {
-		transformer.Transform(pc.Pixels, s2d, im, im.Bounds(), draw.Over, nil)
+		transformer.Transform(toIm, s2d, fmIm, fmIm.Bounds(), draw.Over, nil)
 	} else {
-		transformer.Transform(pc.Pixels, s2d, im, im.Bounds(), draw.Over, &draw.Options{
+		transformer.Transform(toIm, s2d, fmIm, fmIm.Bounds(), draw.Over, &draw.Options{
 			DstMask:  pc.Mask,
 			DstMaskP: image.ZP,
 		})
 	}
 }
 
+//////////////////////////////////////////////////////////////////////////////////
 // Text Functions
 
 func (pc *Paint) SetFontFace(fontFace font.Face) {
-	pc.fontFace = fontFace
-	pc.fontHeight = float64(fontFace.Metrics().Height) / 64
+	pc.Font.Face = fontFace
+	pc.Font.Height = float64(fontFace.Metrics().Height) / 64.0
 }
 
 func (pc *Paint) LoadFontFace(path string, points float64) error {
 	face, err := LoadFontFace(path, points)
 	if err == nil {
-		pc.fontFace = face
-		pc.fontHeight = points * 72 / 96
+		pc.Font.Face = face
+		pc.Font.Height = points * 72 / 96
 	}
 	return err
 }
 
 func (pc *Paint) FontHeight() float64 {
-	return pc.fontHeight
+	return pc.Font.Height
 }
 
 func (pc *Paint) drawString(im *image.RGBA, s string, x, y float64) {
 	d := &font.Drawer{
 		Dst:  im,
-		Src:  image.NewUniform(pc.color),
-		Face: pc.fontFace,
+		Src:  image.NewUniform(pc.Stroke.Color),
+		Face: pc.Font.Face,
 		Dot:  fixp(x, y),
 	}
 	// based on Drawer.DrawString() in golang.org/x/image/font/font.go
@@ -485,49 +486,49 @@ func (pc *Paint) drawString(im *image.RGBA, s string, x, y float64) {
 }
 
 // DrawString draws the specified text at the specified point.
-func (pc *Paint) DrawString(s string, x, y float64) {
-	pc.DrawStringAnchored(s, x, y, 0, 0)
+func (pc *Paint) DrawString(im *image.RGBA, s string, x, y float64) {
+	pc.DrawStringAnchored(im, s, x, y, 0, 0)
 }
 
 // DrawStringAnchored draws the specified text at the specified anchor point.
 // The anchor point is x - w * ax, y - h * ay, where w, h is the size of the
 // text. Use ax=0.5, ay=0.5 to center the text at the specified point.
-func (pc *Paint) DrawStringAnchored(s string, x, y, ax, ay float64) {
+func (pc *Paint) DrawStringAnchored(im *image.RGBA, s string, x, y, ax, ay float64) {
 	w, h := pc.MeasureString(s)
 	x -= ax * w
 	y += ay * h
 	if pc.Mask == nil {
-		pc.drawString(pc.Pixels, s, x, y)
-	} else {
-		im := image.NewRGBA(image.Rect(0, 0, pc.ViewBox.Size.X, pc.ViewBox.Size.Y))
 		pc.drawString(im, s, x, y)
-		draw.DrawMask(pc.Pixels, pc.Pixels.Bounds(), im, image.ZP, pc.Mask, image.ZP, draw.Over)
+	} else {
+		im := image.NewRGBA(pc.Bounds)
+		pc.drawString(im, s, x, y)
+		draw.DrawMask(im, im.Bounds(), im, image.ZP, pc.Mask, image.ZP, draw.Over)
 	}
 }
 
 // DrawStringWrapped word-wraps the specified string to the given max width
 // and then draws it at the specified anchor point using the given line
 // spacing and text alignment.
-func (pc *Paint) DrawStringWrapped(s string, x, y, ax, ay, width, lineSpacing float64, align Align) {
+func (pc *Paint) DrawStringWrapped(im *image.RGBA, s string, x, y, ax, ay, width, lineSpacing float64, align TextAlign) {
 	lines := pc.WordWrap(s, width)
-	h := float64(len(lines)) * pc.fontHeight * lineSpacing
-	h -= (lineSpacing - 1) * pc.fontHeight
+	h := float64(len(lines)) * pc.Font.Height * lineSpacing
+	h -= (lineSpacing - 1) * pc.Font.Height
 	x -= ax * width
 	y -= ay * h
 	switch align {
-	case AlignLeft:
+	case TextAlignLeft:
 		ax = 0
-	case AlignCenter:
+	case TextAlignCenter:
 		ax = 0.5
 		x += width / 2
-	case AlignRight:
+	case TextAlignRight:
 		ax = 1
 		x += width
 	}
 	ay = 1
 	for _, line := range lines {
-		pc.DrawStringAnchored(line, x, y, ax, ay)
-		y += pc.fontHeight * lineSpacing
+		pc.DrawStringAnchored(im, line, x, y, ax, ay)
+		y += pc.Font.Height * lineSpacing
 	}
 }
 
@@ -535,18 +536,19 @@ func (pc *Paint) DrawStringWrapped(s string, x, y, ax, ay, width, lineSpacing fl
 // given the current font face.
 func (pc *Paint) MeasureString(s string) (w, h float64) {
 	d := &font.Drawer{
-		Face: pc.fontFace,
+		Face: pc.Font.Face,
 	}
 	a := d.MeasureString(s)
-	return float64(a >> 6), pc.fontHeight
+	return float64(a >> 6), pc.Font.Height
 }
 
 // WordWrap wraps the specified string to the given max width and current
 // font face.
 func (pc *Paint) WordWrap(s string, w float64) []string {
-	return wordWrap(vp, s, w)
+	return wordWrap(pc, s, w)
 }
 
+//////////////////////////////////////////////////////////////////////////////////
 // Transformation Matrix Operations
 
 // Identity resets the current transformation matrix to the identity matrix.
@@ -605,6 +607,143 @@ func (pc *Paint) ShearAbout(sx, sy, x, y float64) {
 // InvertY flips the Y axis so that Y grows from bottom to top and Y=0 is at
 // the bottom of the image.
 func (pc *Paint) InvertY() {
-	pc.Translate(0, float64(pc.ViewBox.Size.Y))
+	pc.Translate(0, float64(pc.Bounds.Size().Y))
 	pc.Scale(1, -1)
+}
+
+////////////////////////////////////////////////////////////////////////////////////
+// Internal -- might want to export these later depending
+
+func flattenPath(p raster.Path) [][]Point2D {
+	var result [][]Point2D
+	var path []Point2D
+	var cx, cy float64
+	for i := 0; i < len(p); {
+		switch p[i] {
+		case 0:
+			if len(path) > 0 {
+				result = append(result, path)
+				path = nil
+			}
+			x := unfix(p[i+1])
+			y := unfix(p[i+2])
+			path = append(path, Point2D{x, y})
+			cx, cy = x, y
+			i += 4
+		case 1:
+			x := unfix(p[i+1])
+			y := unfix(p[i+2])
+			path = append(path, Point2D{x, y})
+			cx, cy = x, y
+			i += 4
+		case 2:
+			x1 := unfix(p[i+1])
+			y1 := unfix(p[i+2])
+			x2 := unfix(p[i+3])
+			y2 := unfix(p[i+4])
+			points := QuadraticBezier(cx, cy, x1, y1, x2, y2)
+			path = append(path, points...)
+			cx, cy = x2, y2
+			i += 6
+		case 3:
+			x1 := unfix(p[i+1])
+			y1 := unfix(p[i+2])
+			x2 := unfix(p[i+3])
+			y2 := unfix(p[i+4])
+			x3 := unfix(p[i+5])
+			y3 := unfix(p[i+6])
+			points := CubicBezier(cx, cy, x1, y1, x2, y2, x3, y3)
+			path = append(path, points...)
+			cx, cy = x3, y3
+			i += 8
+		default:
+			panic("bad path")
+		}
+	}
+	if len(path) > 0 {
+		result = append(result, path)
+	}
+	return result
+}
+
+func dashPath(paths [][]Point2D, dashes []float64) [][]Point2D {
+	var result [][]Point2D
+	if len(dashes) == 0 {
+		return paths
+	}
+	if len(dashes) == 1 {
+		dashes = append(dashes, dashes[0])
+	}
+	for _, path := range paths {
+		if len(path) < 2 {
+			continue
+		}
+		previous := path[0]
+		pathIndex := 1
+		dashIndex := 0
+		segmentLength := 0.0
+		var segment []Point2D
+		segment = append(segment, previous)
+		for pathIndex < len(path) {
+			dashLength := dashes[dashIndex]
+			point := path[pathIndex]
+			d := previous.Distance(point)
+			maxd := dashLength - segmentLength
+			if d > maxd {
+				t := maxd / d
+				p := previous.Interpolate(point, t)
+				segment = append(segment, p)
+				if dashIndex%2 == 0 && len(segment) > 1 {
+					result = append(result, segment)
+				}
+				segment = nil
+				segment = append(segment, p)
+				segmentLength = 0
+				previous = p
+				dashIndex = (dashIndex + 1) % len(dashes)
+			} else {
+				segment = append(segment, point)
+				previous = point
+				segmentLength += d
+				pathIndex++
+			}
+		}
+		if dashIndex%2 == 0 && len(segment) > 1 {
+			result = append(result, segment)
+		}
+	}
+	return result
+}
+
+func rasterPath(paths [][]Point2D) raster.Path {
+	var result raster.Path
+	for _, path := range paths {
+		var previous fixed.Point26_6
+		for i, point := range path {
+			f := point.Fixed()
+			if i == 0 {
+				result.Start(f)
+			} else {
+				dx := f.X - previous.X
+				dy := f.Y - previous.Y
+				if dx < 0 {
+					dx = -dx
+				}
+				if dy < 0 {
+					dy = -dy
+				}
+				if dx+dy > 8 {
+					// TODO: this is a hack for cases where two points are
+					// too close - causes rendering issues with joins / caps
+					result.Add1(f)
+				}
+			}
+			previous = f
+		}
+	}
+	return result
+}
+
+func dashed(path raster.Path, dashes []float64) raster.Path {
+	return rasterPath(dashPath(flattenPath(path), dashes))
 }

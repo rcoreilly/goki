@@ -5,16 +5,17 @@
 package gogi
 
 import (
-	//	"github.com/go-gl/mathgl/mgl64"
-	"image"
+	// "fmt"
+	"image/color"
+	"log"
 )
 
 // end-cap of a line: stroke-linecap property in SVG
 type LineCap int
 
 const (
-	LineCapRound LineCap = iota
-	LineCapButt
+	LineCapButt LineCap = iota
+	LineCapRound
 	LineCapSquare
 )
 
@@ -37,38 +38,46 @@ const (
 
 // PaintStroke contains all the properties specific to painting a line -- the svg elements define the corresponding SVG style attributes, which are processed in StrokeStyle
 type PaintStroke struct {
-	Color      color.Color `svg:"stroke",desc:"color of the stroke"`
+	On         bool        `desc:"is stroke active -- if property is none then false"`
+	Color      color.Color `desc:"default stroke color when such a color is needed -- Server could be anything"`
+	Server     PaintServer `svg:"stroke",desc:"paint server for the stroke -- if solid color, defines the stroke color"`
 	Width      float64     `svg:"stroke-width",desc:"line width"`
 	Dashes     []float64   `svg:"stroke-dasharray",desc:"dash pattern"`
 	Cap        LineCap     `svg:"stroke-linecap",desc:"how to draw the end cap of lines"`
 	Join       LineJoin    `svg:"stroke-linejoin",desc:"how to join line segments"`
 	MiterLimit float64     `svg:"stroke-miterlimit,min:"1",desc:"limit of how far to miter -- must be 1 or larger"`
-	Pat        Pattern     `desc:"pattern for the stroke -- not clear if this is in svg"`
 }
 
 // initialize default values for paint stroke
-func (p *PaintStroke) Defaults() {
-	Color = color.Black
-	Width = 1.0
+func (ps *PaintStroke) Defaults() {
+	ps.On = false // svg says default is off
+	ps.Server = NewSolidcolorPaintServer(color.Black)
+	ps.Width = 1.0
+	ps.Cap = LineCapButt
+	ps.Join = LineJoinMiter // Miter not yet supported, but that is the default -- falls back on bevel
+	ps.MiterLimit = 1.0
 }
 
 // todo: figure out more elemental, generic de-stringer kind of thing
 
 // update the stroke settings from the style info on the node
-func (s *PaintStroke) StrokeStyle(g *GiNode2D) {
+func (ps *PaintStroke) SetFromNode(g *GiNode2D) {
 	// always check if property has been set before setting -- otherwise defaults to empty -- true = inherit props
-	if c, got := g.PropColor("stroke"); got {
-		s.Color = c
+	if c, got := g.PropColor("stroke"); got { // todo: support url's to paint server elements!
+		ps.On = true
+		ps.Color = c // todo: only if color
+		ps.Server = NewSolidcolorPaintServer(c)
+		// ps.Server = NewSolidcolorPaintServer(color.Black)
 	}
 	if w, got := g.PropLength("stroke-width"); got {
-		s.Width = w
+		ps.Width = w
 	}
-	if o, got := g.PropNumber("stroke-opacity"); got {
+	if _, got := g.PropNumber("stroke-opacity"); got {
 		// todo: need to set the color alpha according to value
 	}
-	if ps, got := g.PropEnum("stroke-linecap", true); got {
+	if es, got := g.PropEnum("stroke-linecap"); got {
 		var lc LineCap = -1
-		switch ps { // first go through short-hand codes
+		switch es { // first go through short-hand codes
 		case "round":
 			lc = LineCapRound
 		case "butt":
@@ -77,19 +86,19 @@ func (s *PaintStroke) StrokeStyle(g *GiNode2D) {
 			lc = LineCapSquare
 		}
 		if lc == -1 {
-			i, err := StringToLineCap(ps) // stringer gen
+			i, err := StringToLineCap(es) // stringer gen
 			if err != nil {
-				s.Cap = i
+				ps.Cap = i
 			} else {
 				log.Print(err)
 			}
 		} else {
-			s.Cap = lc
+			ps.Cap = lc
 		}
 	}
-	if ps, got := g.Prop("stroke-linejoin", true); got {
+	if es, got := g.PropEnum("stroke-linejoin"); got {
 		var lc LineJoin = -1
-		switch ps { // first go through short-hand codes
+		switch es { // first go through short-hand codes
 		case "miter":
 			lc = LineJoinMiter
 		case "miter-clip":
@@ -102,17 +111,17 @@ func (s *PaintStroke) StrokeStyle(g *GiNode2D) {
 			lc = LineJoinArcs
 		}
 		if lc == -1 {
-			i, err := StringToLineJoin(ps) // stringer gen
+			i, err := StringToLineJoin(es) // stringer gen
 			if err != nil {
-				s.Join = i
+				ps.Join = i
 			} else {
 				log.Print(err)
 			}
 		} else {
-			s.Join = lc
+			ps.Join = lc
 		}
 	}
 	if l, got := g.PropNumber("miter-limit"); got {
-		s.MiterLimit = l
+		ps.MiterLimit = l
 	}
 }

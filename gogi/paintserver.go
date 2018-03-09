@@ -12,7 +12,7 @@ import (
 )
 
 /*
-This is essentially verbatim from: https://github.com/fogleman/gg
+This is modified and extended from: https://github.com/fogleman/gg
 
 Copyright (C) 2016 Michael Fogleman
 
@@ -35,6 +35,27 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+// PaintServers provide patterned colors for stroke and fill operations
+type PaintServerType int
+
+const (
+	PaintSolidcolor PaintServerType = iota
+	PaintLinearGradient
+	PaintRadialGradient
+	PaintMeshGradient
+	PaintPattern
+	PaintHatch
+	PaintHatchpath
+	PaintImage // apparently not SVG-standard but we have it.
+)
+
+// contrary to some docs, apparently need to run go generate manually
+//go:generate stringer -type=PaintServerType
+
+// todo: implement all the other types of paint servers
+
+// todo: this is not SVG standard and needs to be updated
+// for pattern paint server, the way in which the pattern repeats
 type RepeatOp int
 
 const (
@@ -44,32 +65,37 @@ const (
 	RepeatNone
 )
 
-type Pattern interface {
+type PaintServer interface {
 	ColorAt(x, y int) color.Color
+	ServerType() PaintServerType
 }
 
-// Solid Pattern
-type solidPattern struct {
-	color color.Color
+// Solid PaintServer
+type SolidcolorPaintServer struct {
+	Color color.Color
 }
 
-func (p *solidPattern) ColorAt(x, y int) color.Color {
-	return p.color
+func (p *SolidcolorPaintServer) ColorAt(x, y int) color.Color {
+	return p.Color
 }
 
-func NewSolidPattern(color color.Color) Pattern {
-	return &solidPattern{color: color}
+func (p *SolidcolorPaintServer) ServerType() PaintServerType {
+	return PaintSolidcolor
 }
 
-// Surface Pattern
-type surfacePattern struct {
-	im image.Image
-	op RepeatOp
+func NewSolidcolorPaintServer(color color.Color) PaintServer {
+	return &SolidcolorPaintServer{Color: color}
 }
 
-func (p *surfacePattern) ColorAt(x, y int) color.Color {
-	b := p.im.Bounds()
-	switch p.op {
+// Image PaintServer
+type ImagePaintServer struct {
+	Image image.Image
+	Op    RepeatOp
+}
+
+func (p *ImagePaintServer) ColorAt(x, y int) color.Color {
+	b := p.Image.Bounds()
+	switch p.Op {
 	case RepeatX:
 		if y >= b.Dy() {
 			return color.Transparent
@@ -85,21 +111,25 @@ func (p *surfacePattern) ColorAt(x, y int) color.Color {
 	}
 	x = x%b.Dx() + b.Min.X
 	y = y%b.Dy() + b.Min.Y
-	return p.im.At(x, y)
+	return p.Image.At(x, y)
 }
 
-func NewSurfacePattern(im image.Image, op RepeatOp) Pattern {
-	return &surfacePattern{im: im, op: op}
+func (p *ImagePaintServer) ServerType() PaintServerType {
+	return PaintImage
 }
 
-type patternPainter struct {
+func NewImagePaintServer(im image.Image, op RepeatOp) PaintServer {
+	return &ImagePaintServer{Image: im, Op: op}
+}
+
+type serverPainter struct {
 	im   *image.RGBA
 	mask *image.Alpha
-	p    Pattern
+	p    PaintServer
 }
 
 // Paint satisfies the Painter interface.
-func (r *patternPainter) Paint(ss []raster.Span, done bool) {
+func (r *serverPainter) Paint(ss []raster.Span, done bool) {
 	b := r.im.Bounds()
 	for _, s := range ss {
 		if s.Y < b.Min.Y {
@@ -146,6 +176,6 @@ func (r *patternPainter) Paint(ss []raster.Span, done bool) {
 	}
 }
 
-func newPatternPainter(im *image.RGBA, mask *image.Alpha, p Pattern) *patternPainter {
-	return &patternPainter{im, mask, p}
+func newPaintServerPainter(im *image.RGBA, mask *image.Alpha, p PaintServer) *serverPainter {
+	return &serverPainter{im, mask, p}
 }

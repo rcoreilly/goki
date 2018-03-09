@@ -39,6 +39,8 @@ type Point2D struct {
 	X, Y float64
 }
 
+type Size2D Point2D
+
 func (a Point2D) Fixed() fixed.Point26_6 {
 	return fixp(a.X, a.Y)
 }
@@ -56,6 +58,8 @@ func (a Point2D) Interpolate(b Point2D, t float64) Point2D {
 type XFormMatrix2D struct {
 	XX, YX, XY, YY, X0, Y0 float64
 }
+
+// todo: make these methods on the XForm to scope them
 
 func Identity() XFormMatrix2D {
 	return XFormMatrix2D{
@@ -153,9 +157,6 @@ const (
 	YMask ViewBoxAlign = YMin + YMid + YMax // mask for Y values -- clear all Y before setting new one
 )
 
-// contrary to some docs, apparently need to run go generate manually
-//go:generate stringer -type=ViewBoxAlign
-
 // ViewBoxMeetOrSlice defines values for the PreserveAspectRatio meet or slice factor
 type ViewBoxMeetOrSlice int32
 
@@ -176,6 +177,37 @@ type ViewBoxPreserveAspectRatio struct {
 // ViewBox defines a region in 2D space
 type ViewBox2D struct {
 	Min                 Point2D                    `svg:"{min-x,min-y}",desc:"offset or starting point in parent Viewport2D"`
-	Size                Point2D                    `svg:"{width,height}",desc:"size of viewbox within parent Viewport2D"`
+	Size                Size2D                     `svg:"{width,height}",desc:"size of viewbox within parent Viewport2D"`
 	PreserveAspectRatio ViewBoxPreserveAspectRatio `svg:"preserveAspectRatio",desc:"how to scale the view box within parent Viewport2D"`
+}
+
+///////////////////////////////////////////////////////////
+// utlities
+
+func Radians(degrees float64) float64 {
+	return degrees * math.Pi / 180
+}
+
+func Degrees(radians float64) float64 {
+	return radians * 180 / math.Pi
+}
+
+func fixp(x, y float64) fixed.Point26_6 {
+	return fixed.Point26_6{fix(x), fix(y)}
+}
+
+func fix(x float64) fixed.Int26_6 {
+	return fixed.Int26_6(x * 64)
+}
+
+func unfix(x fixed.Int26_6) float64 {
+	const shift, mask = 6, 1<<6 - 1
+	if x >= 0 {
+		return float64(x>>shift) + float64(x&mask)/64
+	}
+	x = -x
+	if x >= 0 {
+		return -(float64(x>>shift) + float64(x&mask)/64)
+	}
+	return 0
 }

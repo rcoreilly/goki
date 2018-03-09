@@ -5,8 +5,8 @@
 package gogi
 
 import (
-	//	"github.com/go-gl/mathgl/mgl32"
-	"image"
+	"image/color"
+	"log"
 )
 
 type FillRule int
@@ -21,41 +21,47 @@ const (
 
 // PaintFill contains all the properties specific to filling a region
 type PaintFill struct {
-	Color color.Color `svg:"fill",desc:"color to fill in"`
-	Rule  FillRule    `svg:"fill-rule",desc:"rule for how to fill more complex shapes with crossing lines"`
-	Pat   Pattern     `desc:"pattern for the stroke -- not clear if this is in svg"`
+	On     bool        `desc:"is fill active -- if property is none then false"`
+	Color  color.Color `desc:"default fill color when such a color is needed -- Server could be anything"`
+	Server PaintServer `svg:"fill",desc:"paint server for the fill -- if solid color, defines fill color"`
+	Rule   FillRule    `svg:"fill-rule",desc:"rule for how to fill more complex shapes with crossing lines"`
 }
 
 // initialize default values for paint fill
-func (p *PaintFill) Defaults() {
-	Color = color.Transparent
+func (pf *PaintFill) Defaults() {
+	pf.On = false // svg says fill is off by default
+	pf.Color = color.White
+	pf.Server = NewSolidcolorPaintServer(pf.Color)
+	pf.Rule = FillRuleNonZero
 }
 
 // todo: figure out more elemental, generic de-stringer kind of thing
 
 // update the fill settings from the style info on the node
-func (s *PaintFill) FillStyle(g *GiNode2D) {
+func (pf *PaintFill) SetFromNode(g *GiNode2D) {
 	// always check if property has been set before setting -- otherwise defaults to empty -- true = inherit props
 	// todo: need to be able to process colors!
 
-	if c, got := g.PropColor("fill"); got {
-		s.Color = c
+	if c, got := g.PropColor("fill"); got { // todo: support url to other paint server types
+		pf.On = true
+		pf.Color = c // todo: only if actually a color
+		pf.Server = NewSolidcolorPaintServer(c)
 	}
-	if o, got := g.PropNumber("fill-opacity"); got {
+	if _, got := g.PropNumber("fill-opacity"); got {
 		// todo: need to set the color alpha according to value
 	}
-	if ps, got := g.PropEnum("fill-rule", true); got {
+	if es, got := g.PropEnum("fill-rule"); got {
 		var fr FillRule = -1
-		switch ps {
+		switch es {
 		case "nonzero":
 			fr = FillRuleNonZero
 		case "evenodd":
 			fr = FillRuleEvenOdd
 		}
 		if fr == -1 {
-			i, err := StringToFillRule(ps) // stringer gen
+			i, err := StringToFillRule(es) // stringer gen
 			if err != nil {
-				s.Rule = i
+				pf.Rule = i
 			} else {
 				log.Print(err)
 			}

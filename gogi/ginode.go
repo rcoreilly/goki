@@ -19,11 +19,13 @@
 package gogi
 
 import (
-	"github.com/go-gl/mathgl/mgl64"
+	"fmt"
 	"github.com/rcoreilly/goki/ki"
-	"gopkg.in/go-playground/colors.v1"
+	// "gopkg.in/go-playground/colors.v1"
+	"image/color"
 	"log"
 	"strconv"
+	"strings"
 )
 
 // todo: not clear if we need any more interfaces??
@@ -44,8 +46,10 @@ type GiNode2D struct {
 
 // this is the primary interface for all 2D rendering nodes
 type Renderer2D interface {
-	// Render graphics into a 2D viewport, subject to overall rendering transform xf
-	Render(vp *Viewport2D, xf Transform2D)
+	// Render graphics into a 2D viewport
+	Render2D(vp *Viewport2D)
+	// Get the GiNode2D representation of the object
+	Render2DNode() *GiNode2D
 }
 
 // basic component node for 3D rendering -- has a 3D transform
@@ -53,9 +57,45 @@ type GiNode3D struct {
 	GiNode
 }
 
+// IMPORTANT: we do NOT use inherit = true for property checks, because the paint stack captures all the relevant inheritance anyway!
+
+// check for the display: none (false) property -- though spec says it is not inherited, it affects all children, so in fact it really is -- this does not show up in the Paint stack so we need to check as inherited
+func (g *GiNode) PropDisplay() bool {
+	p := g.Prop("display", true) // true = inherit
+	if p == nil {
+		return true
+	}
+	switch v := p.(type) {
+	case string:
+		if v == "none" {
+			return false
+		}
+	case bool:
+		return v
+	}
+	return true
+}
+
+// check for the visible: none (false) property
+func (g *GiNode) PropVisible() bool {
+	p := g.Prop("visible", true) // true= inherit
+	if p == nil {
+		return true
+	}
+	switch v := p.(type) {
+	case string:
+		if v == "none" {
+			return false
+		}
+	case bool:
+		return v
+	}
+	return true
+}
+
 // process properties and any css style sheets (todo) to get a length property of the given name -- returns false if property has not been set -- automatically deals with units such as px, em etc
 func (g *GiNode) PropLength(name string) (float64, bool) {
-	p := g.Prop(name, true) // true = inherit
+	p := g.Prop(name, false) // false = inherit
 	if p == nil {
 		return 0, false
 	}
@@ -64,10 +104,10 @@ func (g *GiNode) PropLength(name string) (float64, bool) {
 		// todo: need to parse units from string!
 		f, err := strconv.ParseFloat(v, 64)
 		if err != nil {
-			log.Printf("GiNode %v PropLength convert from string err: %v", err)
+			log.Printf("GiNode %v PropLength convert from string err: %v", g.PathUnique(), err)
 			return 0, false
 		}
-		return f
+		return f, true
 	case float64:
 		return v, true
 	case float32:
@@ -81,7 +121,7 @@ func (g *GiNode) PropLength(name string) (float64, bool) {
 
 // process properties and any css style sheets (todo) to get a number property of the given name -- returns false if property has not been set
 func (g *GiNode) PropNumber(name string) (float64, bool) {
-	p := g.Prop(name, true) // true = inherit
+	p := g.Prop(name, false) // false = inherit
 	if p == nil {
 		return 0, false
 	}
@@ -89,10 +129,10 @@ func (g *GiNode) PropNumber(name string) (float64, bool) {
 	case string:
 		f, err := strconv.ParseFloat(v, 64)
 		if err != nil {
-			log.Printf("GiNode %v PropNumber convert from string err: %v", err)
+			log.Printf("GiNode %v PropNumber convert from string err: %v", g.PathUnique(), err)
 			return 0, false
 		}
-		return f
+		return f, true
 	case float64:
 		return v, true
 	case float32:
@@ -106,7 +146,7 @@ func (g *GiNode) PropNumber(name string) (float64, bool) {
 
 // process properties and any css style sheets (todo) to get an enumerated type as a string -- returns true if value is present
 func (g *GiNode) PropEnum(name string) (string, bool) {
-	p := g.Prop(name, true) // true = inherit
+	p := g.Prop(name, false) // false = inherit
 	if p == nil {
 		return "", false
 	}
@@ -120,20 +160,42 @@ func (g *GiNode) PropEnum(name string) (string, bool) {
 
 // process properties and any css style sheets (todo) to get a color
 func (g *GiNode) PropColor(name string) (color.Color, bool) {
-	p := g.Prop(name, true) // true = inherit
+	p := g.Prop(name, false) // false = inherit
 	if p == nil {
 		return nil, false
 	}
 	switch v := p.(type) {
 	case string:
-		cl, err := colors.Parse(v)
-		if err != nil {
-			log.Printf("GiNode %v PropColor convert from string err: %v", err)
-			return nil, false
-		}
-		rgba := cl.ToRGBA()
-		return color.RGBA(rgba.r, rgba.g, rgba.b, rgba.a), true
+		fmt.Printf("got color: %v for name: %v\n", v, name)
+		// cl, err := colors.Parse(v) // not working
+		return ParseHexColor(v), true
 	default:
 		return nil, false
 	}
+}
+
+// todo: move to css
+
+// parse Hex color -- todo: also need to lookup color names
+func ParseHexColor(x string) color.Color {
+	x = strings.TrimPrefix(x, "#")
+	var r, g, b, a int
+	a = 255
+	if len(x) == 3 {
+		format := "%1x%1x%1x"
+		fmt.Sscanf(x, format, &r, &g, &b)
+		r |= r << 4
+		g |= g << 4
+		b |= b << 4
+	}
+	if len(x) == 6 {
+		format := "%02x%02x%02x"
+		fmt.Sscanf(x, format, &r, &g, &b)
+	}
+	if len(x) == 8 {
+		format := "%02x%02x%02x%02x"
+		fmt.Sscanf(x, format, &r, &g, &b, &a)
+	}
+
+	return color.RGBA{uint8(r), uint8(g), uint8(b), uint8(a)}
 }

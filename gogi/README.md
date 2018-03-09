@@ -13,6 +13,8 @@ GoDoc documentation: https://godoc.org/github.com/rcoreilly/goki/gogi
 
 # Design notes
 
+* Excellent rendering code on top of freetype rasterizer, does almost everything we need: https://github.com/fogleman/gg -- borrowed heavily from that!
+
 The 2D Gi is based entirely on the SVG2 spec: https://www.w3.org/TR/SVG2/Overview.html, and renders directly to an Image struct (`Viewport2D`)
 
 The 3D Gi is based on TBD (will be impl later) and renders directly into a `Viewport3D` offscreen image buffer (OpenGL for now, but with generalization to Vulkan etc).
@@ -27,13 +29,13 @@ The overall parent Window can either provide a 2D or 3D viewport, which map dire
 
 ## 2D Design
 
-* using the `github.com/go-gl/mathgl/mgl32/` math elements (vectors, matricies) which build on the basic `golang.org/x/image/math/f32` vectors -- svg does not seem to have a basic vector type so it uses -x -y, width, height etc
+* Using the basic 64bit geom from fogleman/gg -- the `github.com/go-gl/mathgl/mgl32/` math elements (vectors, matricies) which build on the basic `golang.org/x/image/math/f32` did not have appropriate 2D rendering transforms etc.
+
+* Using 64bit floats for coordinates etc because the spec says you need those for the "high quality" transforms, and Go defaults to them, and it just makes life easier -- won't have so crazy many coords in 2D space as we might have in 3D, where 32bit makes more sense and optimizes GPU hardware.
 
 * SVG names use the lower-case starting camelCase convention, and often contain -'s, so we use a struct tag of svg: to map the UpperCase Go field names to their underlying SVG names for parsing etc.  E.g., use `"{min-x,min-y}"` to label the vector elements of the `Min Vec2` field.
 
 * The SVG default coordinate system has 0,0 at the upper-left.  The default 3D coordinate system flips the Y axis so 0,0 is at the lower left effectively (actually it uses center-based coordinates so 0,0 is in the center of the image, effectively -- everything is defined by the camera anyway)
-
-* Using 64bit floats for coordinates etc because the spec says you need those for the "high quality" transforms, and Go defaults to them, and it just makes life easier -- won't have so crazy many coords in 2D space as we might have in 3D, where 32bit makes more sense and optimizes GPU hardware.
 
 ## 3D Design
 
@@ -42,6 +44,9 @@ The overall parent Window can either provide a 2D or 3D viewport, which map dire
 
 # Links
 
+* SVG *text* generator in go: https://github.com/ajstarks/svgo
+* cairo wrapper in go: https://github.com/ungerik/go-cairo -- maybe needed for PDF generation from SVG?
+* https://github.com/jyotiska/go-webcolors -- need this for parsing colors
 * https://golang.org/pkg/image/
 * https://godoc.org/golang.org/x/image/vector
 * https://godoc.org/github.com/golang/freetype/raster

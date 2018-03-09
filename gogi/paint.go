@@ -327,6 +327,22 @@ func (pc *Paint) DrawLine(x1, y1, x2, y2 float64) {
 	pc.LineTo(x2, y2)
 }
 
+func (pc *Paint) DrawPolyline(points []Point2D) {
+	sz := len(points)
+	if sz < 2 {
+		return
+	}
+	pc.MoveTo(points[0].X, points[0].Y)
+	for i := 1; i < sz; i++ {
+		pc.LineTo(points[i].X, points[i].Y)
+	}
+}
+
+func (pc *Paint) DrawPolygon(points []Point2D) {
+	pc.DrawPolyline(points)
+	pc.ClosePath()
+}
+
 func (pc *Paint) DrawRectangle(x, y, w, h float64) {
 	pc.NewSubPath()
 	pc.MoveTo(x, y)

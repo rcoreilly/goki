@@ -168,6 +168,9 @@ func (g *GiNode) PropColor(name string) (color.Color, bool) {
 	case string:
 		// fmt.Printf("got color: %v for name: %v\n", v, name)
 		// cl, err := colors.Parse(v) // not working
+		if v == "none" {
+			return nil, true
+		}
 		return ParseHexColor(v), true
 	default:
 		return nil, false

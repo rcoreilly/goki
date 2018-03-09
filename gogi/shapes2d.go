@@ -8,7 +8,10 @@ import (
 // "fmt"
 )
 
-// a 2D rectangle,
+// NOTE: for all render2D calls, viewport render has already handled the SetPaintFromNode call,
+// and also managed disabled, visible status
+
+// a 2D rectangle, optionally with rounded corners
 type GiRect struct {
 	GiNode2D
 	Pos    Point2D `svg:"{x,y}",desc:"position of top-left corner"`
@@ -20,7 +23,6 @@ func (g *GiRect) Render2DNode() *GiNode2D {
 	return &g.GiNode2D
 }
 
-// viewport render has already handled the SetPaintFromNode call, and also looked for disabled
 func (g *GiRect) Render2D(vp *Viewport2D) bool {
 	if vp.HasNoStrokeOrFill() {
 		return true
@@ -40,3 +42,139 @@ func (g *GiRect) Render2D(vp *Viewport2D) bool {
 	vp.ClearPath()
 	return true
 }
+
+// a 2D circle
+type GiCircle struct {
+	GiNode2D
+	Pos    Point2D `svg:"{cx,cy}",desc:"position of the center of the circle"`
+	Radius float64 `svg:"r",desc:"radius of the circle"`
+}
+
+func (g *GiCircle) Render2DNode() *GiNode2D {
+	return &g.GiNode2D
+}
+
+func (g *GiCircle) Render2D(vp *Viewport2D) bool {
+	if vp.HasNoStrokeOrFill() {
+		return true
+	}
+	vp.DrawCircle(g.Pos.X, g.Pos.Y, g.Radius)
+	if vp.HasFill() {
+		vp.FillPreserve()
+	}
+	if vp.HasStroke() {
+		vp.StrokePreserve()
+	}
+	vp.ClearPath()
+	return true
+}
+
+// a 2D ellipse
+type GiEllipse struct {
+	GiNode2D
+	Pos   Point2D `svg:"{cx,cy}",desc:"position of the center of the ellipse"`
+	Radii Size2D  `svg:"{rx, ry}",desc:"radii of the ellipse in the horizontal, vertical axes"`
+}
+
+func (g *GiEllipse) Render2DNode() *GiNode2D {
+	return &g.GiNode2D
+}
+
+func (g *GiEllipse) Render2D(vp *Viewport2D) bool {
+	if vp.HasNoStrokeOrFill() {
+		return true
+	}
+	vp.DrawEllipse(g.Pos.X, g.Pos.Y, g.Radii.X, g.Radii.Y)
+	if vp.HasFill() {
+		vp.FillPreserve()
+	}
+	if vp.HasStroke() {
+		vp.StrokePreserve()
+	}
+	vp.ClearPath()
+	return true
+}
+
+// a 2D line
+type GiLine struct {
+	GiNode2D
+	Start Point2D `svg:"{x1,y1}",desc:"position of the start of the line"`
+	End   Point2D `svg:"{x2, y2}",desc:"position of the end of the line"`
+}
+
+func (g *GiLine) Render2DNode() *GiNode2D {
+	return &g.GiNode2D
+}
+
+func (g *GiLine) Render2D(vp *Viewport2D) bool {
+	if vp.HasNoStrokeOrFill() {
+		return true
+	}
+	vp.DrawLine(g.Start.X, g.Start.Y, g.End.X, g.End.Y)
+	if vp.HasFill() {
+		vp.FillPreserve()
+	}
+	if vp.HasStroke() {
+		vp.StrokePreserve()
+	}
+	vp.ClearPath()
+	return true
+}
+
+// a 2D Polyline
+type GiPolyline struct {
+	GiNode2D
+	Points []Point2D `svg:"points",desc:"the coordinates to draw -- does a moveto on the first, then lineto for all the rest"`
+}
+
+func (g *GiPolyline) Render2DNode() *GiNode2D {
+	return &g.GiNode2D
+}
+
+func (g *GiPolyline) Render2D(vp *Viewport2D) bool {
+	if vp.HasNoStrokeOrFill() {
+		return true
+	}
+	if len(g.Points) < 2 {
+		return true // todo: could issue warning but..
+	}
+	vp.DrawPolyline(g.Points)
+	if vp.HasFill() {
+		vp.FillPreserve()
+	}
+	if vp.HasStroke() {
+		vp.StrokePreserve()
+	}
+	vp.ClearPath()
+	return true
+}
+
+// a 2D Polygon
+type GiPolygon struct {
+	GiNode2D
+	Points []Point2D `svg:"points",desc:"the coordinates to draw -- does a moveto on the first, then lineto for all the rest, then does a closepath at the end"`
+}
+
+func (g *GiPolygon) Render2DNode() *GiNode2D {
+	return &g.GiNode2D
+}
+
+func (g *GiPolygon) Render2D(vp *Viewport2D) bool {
+	if vp.HasNoStrokeOrFill() {
+		return true
+	}
+	if len(g.Points) < 2 {
+		return true // todo: could issue warning but..
+	}
+	vp.DrawPolygon(g.Points)
+	if vp.HasFill() {
+		vp.FillPreserve()
+	}
+	if vp.HasStroke() {
+		vp.StrokePreserve()
+	}
+	vp.ClearPath()
+	return true
+}
+
+// new in SVG2: mesh

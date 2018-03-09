@@ -307,6 +307,16 @@ func (vp *Viewport2D) DrawLine(x1, y1, x2, y2 float64) {
 	pc.DrawLine(x1, y1, x2, y2)
 }
 
+func (vp *Viewport2D) DrawPolyline(points []Point2D) {
+	pc := vp.CurPaint()
+	pc.DrawPolyline(points)
+}
+
+func (vp *Viewport2D) DrawPolygon(points []Point2D) {
+	pc := vp.CurPaint()
+	pc.DrawPolygon(points)
+}
+
 func (vp *Viewport2D) DrawRectangle(x, y, w, h float64) {
 	pc := vp.CurPaint()
 	pc.DrawRectangle(x, y, w, h)

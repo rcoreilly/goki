@@ -43,9 +43,13 @@ func (pf *PaintFill) SetFromNode(g *GiNode2D) {
 	// todo: need to be able to process colors!
 
 	if c, got := g.PropColor("fill"); got { // todo: support url to other paint server types
-		pf.On = true
-		pf.Color = c // todo: only if actually a color
-		pf.Server = NewSolidcolorPaintServer(c)
+		if c == nil {
+			pf.On = false
+		} else {
+			pf.On = true
+			pf.Color = c // todo: only if actually a color
+			pf.Server = NewSolidcolorPaintServer(c)
+		}
 	}
 	if _, got := g.PropNumber("fill-opacity"); got {
 		// todo: need to set the color alpha according to value

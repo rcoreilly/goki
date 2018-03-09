@@ -64,10 +64,13 @@ func (ps *PaintStroke) Defaults() {
 func (ps *PaintStroke) SetFromNode(g *GiNode2D) {
 	// always check if property has been set before setting -- otherwise defaults to empty -- true = inherit props
 	if c, got := g.PropColor("stroke"); got { // todo: support url's to paint server elements!
-		ps.On = true
-		ps.Color = c // todo: only if color
-		ps.Server = NewSolidcolorPaintServer(c)
-		// ps.Server = NewSolidcolorPaintServer(color.Black)
+		if c == nil {
+			ps.On = false
+		} else {
+			ps.On = true
+			ps.Color = c // todo: only if color
+			ps.Server = NewSolidcolorPaintServer(c)
+		}
 	}
 	if w, got := g.PropLength("stroke-width"); got {
 		ps.Width = w

@@ -104,11 +104,11 @@ func (vp *Viewport2D) Render2D(parVp *Viewport2D) bool {
 		if level == 0 || k == vp.This { // don't process us!
 			return true
 		}
-		r2d, ok := (interface{}(k)).(Renderer2D)
+		r2d, ok := (interface{}(k)).(IGiNode2D)
 		if !ok {
 			return true
 		}
-		gi := r2d.Render2DNode()
+		gi := r2d.Node2D()
 		// fmt.Printf("rendering gi %v\n", gi.Name)
 		disp := gi.PropDisplay()
 		if !disp { // go no further
@@ -124,8 +124,12 @@ func (vp *Viewport2D) Render2D(parVp *Viewport2D) bool {
 		cont := true // whether to continue down the stack at this point
 		vis := gi.PropVisible()
 		if vis {
+			// todo: might want to encapsulate fill, stroke settings if a leaf render obj?
 			vp.SetPaintFromNode(gi)
-			cont = r2d.Render2D(vp) // if this is itself a vp, we need to stop
+			gi.XForm = vp.CurPaint().XForm // cache current xform
+			cont = r2d.Render2D(vp)        // if this is itself a vp, we need to stop
+		} else {
+			gi.XForm = vp.CurPaint().XForm // cache current xform even if not visible?  maybe nil?
 		}
 		return cont
 	})

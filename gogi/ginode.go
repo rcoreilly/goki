@@ -28,11 +28,23 @@ import (
 	"strings"
 )
 
-// todo: not clear if we need any more interfaces??
-
 // basic component node for GoGi
 type GiNode struct {
 	ki.Node
+}
+
+// primary interface for all GiNodes
+type IGiNode interface {
+	// // general gi node initialization
+	// InitGiNode()
+	// check for the display: none (false) property -- though spec says it is not inherited, it affects all children, so in fact it really is -- we terminate render when encountered so we don't need inherits version
+	PropDisplay() bool
+	// check for the visible: none (false) property
+	PropVisible() bool
+	// process properties and any css style sheets (todo) to get an enumerated type as a string -- returns true if value is present
+	PropEnum(name string) (string, bool)
+	// process properties and any css style sheets (todo) to get a color
+	PropColor(name string) (color.Color, bool)
 }
 
 // standard css properties on nodes apply, including visible, etc.
@@ -40,22 +52,45 @@ type GiNode struct {
 // basic component node for 2D rendering
 type GiNode2D struct {
 	GiNode
-	z_index int `svg:"z-index",desc:"ordering factor for rendering depth -- lower numbers rendered first -- sort children according to this factor"`
-	// todo: do we want to cache any transforms or anything? maybe not?
+	z_index int           `svg:"z-index",desc:"ordering factor for rendering depth -- lower numbers rendered first -- sort children according to this factor"`
+	XForm   XFormMatrix2D `desc:"the transform present when we were last rendered"`
 }
 
-// this is the primary interface for all 2D rendering nodes
-type Renderer2D interface {
+// primary interface for all GiNode2D's
+type IGiNode2D interface {
+	IGiNode
 	// Render graphics into a 2D viewport -- return value indicates whether we should keep going down -- e.g., viewport cuts off there
 	Render2D(vp *Viewport2D) bool
 	// Get the GiNode2D representation of the object
-	Render2DNode() *GiNode2D
+	Node2D() *GiNode2D
+	// Initialize a new GiNode2D
+	PropLength(name string) (float64, bool)
+}
+
+// todo: viewport has init all nodes
+
+// each node notifies its parent viewport whenever it changes, causing a re-render
+func SignalViewport2D(vp, node ki.Ki, sig ki.SignalType, data interface{}) {
+	// todo: convert vp into a viewport, re-render
+}
+
+// initialize a 2D node -- viewport parent calls recursively
+func (g *GiNode2D) Init2DNode(vp *Viewport2D) {
+	// we notify our parent viewport whenever we have been updated
+	if g.NodeSig.FindConnectionIndex(vp.This, SignalViewport2D) < 0 {
+		g.NodeSig.Connect(vp.This, SignalViewport2D)
+	}
 }
 
 // basic component node for 3D rendering -- has a 3D transform
 type GiNode3D struct {
 	GiNode
 }
+
+////////////////////////////////////////////////////////////////////////////////////////
+//    Property checking
+
+// todo: could use an IGiNode interface for these common things.. probably more "chanto"
 
 // IMPORTANT: we do NOT use inherit = true for property checks, because the paint stack captures all the relevant inheritance anyway!
 
@@ -91,32 +126,6 @@ func (g *GiNode) PropVisible() bool {
 		return v
 	}
 	return true
-}
-
-// process properties and any css style sheets (todo) to get a length property of the given name -- returns false if property has not been set -- automatically deals with units such as px, em etc
-func (g *GiNode) PropLength(name string) (float64, bool) {
-	p := g.Prop(name, false) // false = inherit
-	if p == nil {
-		return 0, false
-	}
-	switch v := p.(type) {
-	case string:
-		// todo: need to parse units from string!
-		f, err := strconv.ParseFloat(v, 64)
-		if err != nil {
-			log.Printf("GiNode %v PropLength convert from string err: %v", g.PathUnique(), err)
-			return 0, false
-		}
-		return f, true
-	case float64:
-		return v, true
-	case float32:
-		return float64(v), true
-	case int:
-		return float64(v), true
-	default:
-		return 0, false
-	}
 }
 
 // process properties and any css style sheets (todo) to get a number property of the given name -- returns false if property has not been set
@@ -201,4 +210,30 @@ func ParseHexColor(x string) color.Color {
 	}
 
 	return color.RGBA{uint8(r), uint8(g), uint8(b), uint8(a)}
+}
+
+// process properties and any css style sheets (todo) to get a length property of the given name -- returns false if property has not been set -- automatically deals with units such as px, em etc
+func (g *GiNode2D) PropLength(name string) (float64, bool) {
+	p := g.Prop(name, false) // false = inherit
+	if p == nil {
+		return 0, false
+	}
+	switch v := p.(type) {
+	case string:
+		// todo: need to parse units from string!
+		f, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			log.Printf("GiNode %v PropLength convert from string err: %v", g.PathUnique(), err)
+			return 0, false
+		}
+		return f, true
+	case float64:
+		return v, true
+	case float32:
+		return float64(v), true
+	case int:
+		return float64(v), true
+	default:
+		return 0, false
+	}
 }

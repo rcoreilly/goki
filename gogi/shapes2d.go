@@ -5,7 +5,8 @@
 package gogi
 
 import (
-// "fmt"
+	"github.com/rcoreilly/goki/ki"
+	// "fmt"
 )
 
 // NOTE: for all render2D calls, viewport render has already handled the SetPaintFromNode call,
@@ -18,6 +19,9 @@ type GiRect struct {
 	Size   Size2D  `svg:"{width,height}",desc:"size of viewbox within parent Viewport2D"`
 	Radius Point2D `svg:"{rx,ry}",desc:"radii for curved corners, as a proportion of width, height"`
 }
+
+// must register all new types so type names can be looked up by name -- e.g., for json
+var KtGiRect = ki.KiTypes.AddType(&GiRect{})
 
 func (g *GiRect) Render2DNode() *GiNode2D {
 	return &g.GiNode2D
@@ -50,6 +54,9 @@ type GiCircle struct {
 	Radius float64 `svg:"r",desc:"radius of the circle"`
 }
 
+// must register all new types so type names can be looked up by name -- e.g., for json
+var KtGiCircle = ki.KiTypes.AddType(&GiCircle{})
+
 func (g *GiCircle) Render2DNode() *GiNode2D {
 	return &g.GiNode2D
 }
@@ -75,6 +82,9 @@ type GiEllipse struct {
 	Pos   Point2D `svg:"{cx,cy}",desc:"position of the center of the ellipse"`
 	Radii Size2D  `svg:"{rx, ry}",desc:"radii of the ellipse in the horizontal, vertical axes"`
 }
+
+// must register all new types so type names can be looked up by name -- e.g., for json
+var KtGiEllipse = ki.KiTypes.AddType(&GiEllipse{})
 
 func (g *GiEllipse) Render2DNode() *GiNode2D {
 	return &g.GiNode2D
@@ -102,6 +112,9 @@ type GiLine struct {
 	End   Point2D `svg:"{x2, y2}",desc:"position of the end of the line"`
 }
 
+// must register all new types so type names can be looked up by name -- e.g., for json
+var KtGiLine = ki.KiTypes.AddType(&GiLine{})
+
 func (g *GiLine) Render2DNode() *GiNode2D {
 	return &g.GiNode2D
 }
@@ -126,6 +139,9 @@ type GiPolyline struct {
 	GiNode2D
 	Points []Point2D `svg:"points",desc:"the coordinates to draw -- does a moveto on the first, then lineto for all the rest"`
 }
+
+// must register all new types so type names can be looked up by name -- e.g., for json
+var KtGiPolyline = ki.KiTypes.AddType(&GiPolyline{})
 
 func (g *GiPolyline) Render2DNode() *GiNode2D {
 	return &g.GiNode2D
@@ -154,6 +170,9 @@ type GiPolygon struct {
 	GiNode2D
 	Points []Point2D `svg:"points",desc:"the coordinates to draw -- does a moveto on the first, then lineto for all the rest, then does a closepath at the end"`
 }
+
+// must register all new types so type names can be looked up by name -- e.g., for json
+var KtGiPolygon = ki.KiTypes.AddType(&GiPolygon{})
 
 func (g *GiPolygon) Render2DNode() *GiNode2D {
 	return &g.GiNode2D

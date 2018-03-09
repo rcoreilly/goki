@@ -21,9 +21,9 @@ func (g *GiRect) Render2DNode() *GiNode2D {
 }
 
 // viewport render has already handled the SetPaintFromNode call, and also looked for disabled
-func (g *GiRect) Render2D(vp *Viewport2D) {
+func (g *GiRect) Render2D(vp *Viewport2D) bool {
 	if vp.HasNoStrokeOrFill() {
-		return
+		return true
 	}
 	if g.Radius.X == 0 && g.Radius.Y == 0 {
 		vp.DrawRectangle(g.Pos.X, g.Pos.Y, g.Size.X, g.Size.Y)
@@ -38,4 +38,5 @@ func (g *GiRect) Render2D(vp *Viewport2D) {
 		vp.StrokePreserve()
 	}
 	vp.ClearPath()
+	return true
 }

@@ -46,8 +46,8 @@ type GiNode2D struct {
 
 // this is the primary interface for all 2D rendering nodes
 type Renderer2D interface {
-	// Render graphics into a 2D viewport
-	Render2D(vp *Viewport2D)
+	// Render graphics into a 2D viewport -- return value indicates whether we should keep going down -- e.g., viewport cuts off there
+	Render2D(vp *Viewport2D) bool
 	// Get the GiNode2D representation of the object
 	Render2DNode() *GiNode2D
 }
@@ -59,9 +59,9 @@ type GiNode3D struct {
 
 // IMPORTANT: we do NOT use inherit = true for property checks, because the paint stack captures all the relevant inheritance anyway!
 
-// check for the display: none (false) property -- though spec says it is not inherited, it affects all children, so in fact it really is -- this does not show up in the Paint stack so we need to check as inherited
+// check for the display: none (false) property -- though spec says it is not inherited, it affects all children, so in fact it really is -- we terminate render when encountered so we don't need inherits version
 func (g *GiNode) PropDisplay() bool {
-	p := g.Prop("display", true) // true = inherit
+	p := g.Prop("display", false) // false = inherit
 	if p == nil {
 		return true
 	}
@@ -166,7 +166,7 @@ func (g *GiNode) PropColor(name string) (color.Color, bool) {
 	}
 	switch v := p.(type) {
 	case string:
-		fmt.Printf("got color: %v for name: %v\n", v, name)
+		// fmt.Printf("got color: %v for name: %v\n", v, name)
 		// cl, err := colors.Parse(v) // not working
 		return ParseHexColor(v), true
 	default:

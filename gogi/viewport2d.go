@@ -98,28 +98,39 @@ func (g *Viewport2D) Render2DNode() *GiNode2D {
 }
 
 // viewport has a special render function that handles all the items below
-func (vp *Viewport2D) Render2D(parVp *Viewport2D) {
-	vp.FunDown(vp, func(k ki.Ki, d interface{}) bool {
-		if k == vp.This { // don't process us!
+func (vp *Viewport2D) Render2D(parVp *Viewport2D) bool {
+	last_level := 0
+	vp.FunDown(last_level, vp, func(k ki.Ki, level int, d interface{}) bool {
+		if level == 0 || k == vp.This { // don't process us!
 			return true
 		}
 		r2d, ok := (interface{}(k)).(Renderer2D)
-		if ok {
-			gi := r2d.Render2DNode()
-			// fmt.Printf("rendering gi %v\n", gi.Name)
-			disp := gi.PropDisplay()
-			vis := gi.PropVisible()
-			if disp && vis {
-				pc := vp.PushNewPaint()
-				pc.SetFromNode(gi)
-				r2d.Render2D(vp)
-				// todo: we can't tell what level we're at here so don't know when to pop stack!
-			}
-			// todo: we should terminate on disp = false at this point, but don't really have that ability..
+		if !ok {
+			return true
 		}
-		return true
+		gi := r2d.Render2DNode()
+		// fmt.Printf("rendering gi %v\n", gi.Name)
+		disp := gi.PropDisplay()
+		if !disp { // go no further
+			return false
+		}
+		// from here we need to update context
+		if level > last_level {
+			vp.PushNewPaint()
+		} else if level < last_level {
+			vp.PopPaint()
+		}
+		last_level = level
+		cont := true // whether to continue down the stack at this point
+		vis := gi.PropVisible()
+		if vis {
+			vp.SetPaintFromNode(gi)
+			cont = r2d.Render2D(vp) // if this is itself a vp, we need to stop
+		}
+		return cont
 	})
 	// todo: at this point we should compost ourselves into parent parVp if it is non-null!
+	return false // we tell parent render to not continue down any further -- we just did it all
 }
 
 func (vp *Viewport2D) RenderTopLevel() {

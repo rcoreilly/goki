@@ -6,7 +6,10 @@ GoDoc documentation: https://godoc.org/github.com/rcoreilly/goki/ki
 # Code Map
 
 * `package ki` -- core `Ki` interface (`ki.go`) and `Node` struct (`node.go`), plus other supporting players
+* `package ip` -- Interactive Parsing system
 * `package gi` -- Graphical Interface based on 2D and 3D scenegraph using Ki trees
+* `package di` -- Drawing Interface based on gi
+* `package wi` -- Web Interface based on gi
 
 # Motivation
 

@@ -6,6 +6,7 @@ GoDoc documentation: https://godoc.org/github.com/rcoreilly/goki/ki
 # Code Map
 
 * `package ki` -- core `Ki` interface (`ki.go`) and `Node` struct (`node.go`), plus other supporting players
+* `package gi` -- Graphical Interface based on 2D and 3D scenegraph using Ki trees
 
 # Motivation
 
@@ -21,7 +22,7 @@ This is a vision that will take Go to the next level of fun and productivity. It
 
 In short, write it once, and provide the kind of modern infrastructure that enables people to build amazing things. This is the Go philosophy, and this seems like the obvious next step.
 
-## Going Native
+## Going Native?
 
 If this project is successful, it might be interesting to consider a possible future version of the Go language that builds in native support for a tree, given the ubiquity and power of this structure.  It is unclear at this point if this would even be useful -- right now the current implementation is leveraging slices and maps and reflection and many other key features of Go -- it seems like a pretty efficient and minimal implementation, and it is unclear what real advantage could be obtained with a native object.  Here's some possibilities, however:
 

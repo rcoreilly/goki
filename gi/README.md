@@ -1,15 +1,23 @@
-# gogi
-Part of the GoKi Go language (golang) full strength tree structure system (ki = tree in Japanese)
+# gi
 
-`package gogi` -- scenegraph based 2D and 3D GUI / graphics interface (Gi) in Go
+GoGi is part of the GoKi Go language (golang) full strength tree structure system (ki = tree in Japanese)
 
-GoDoc documentation: https://godoc.org/github.com/rcoreilly/goki/gogi
+`package gi` -- scenegraph based 2D and 3D GUI / graphics interface (Gi) in Go
+
+GoDoc documentation: https://godoc.org/github.com/rcoreilly/goki/gi
 
 
 # Code Map
 
-* `ginode.go` -- basic GiNode struct
-* `transform.go` -- transform structures
+* `ginode.go` -- basic `GiNode`, `GiNode2D`, `3D` structs and interfaces -- all Gi nodes are of this type
+* `geom2d.go` -- All 2D geometry: Point2D, Size2D, etc
+* `paint.go` -- `Paint` struct that does all the direct rendering, based on `gg`
+	+ `stroke.go`, `fill.go` -- `PaintStroke` and `PaintFill` structs for stroke, fill settings
+* `viewport2d.go` -- `Viewport2D` that has an `Image.RGBA` that `Paint` renders onto
+* `window.go` -- `Window` is the top-level window that uses `go.wde` to open a gui window
+* `shapes2d.go` -- All the basic 2D shapes: `GiRect`, `GiCircle` etc
+* `text2d.go` -- Font, text rendering nodes
+* `path.go` -- path-rendering nodes
 
 # Design notes
 

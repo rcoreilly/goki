@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 /*
-	Package GoGi provides a complete Graphical Interface based on GoKi Tree Node structs
+	Package Gi (GoGi) provides a complete Graphical Interface based on GoKi Tree Node structs
 
 	The GiNode struct that implements the Ki interface, which
 	can be used as an embedded type (or a struct field) in other structs to provide
@@ -16,7 +16,7 @@
 		* Robust updating state -- wrap updates in UpdateStart / End, and signals are blocked until the final end, at which point an update signal is sent -- works across levels
 		* Properties (as a string-keyed map) with property inheritance -- css anyone!?
 */
-package gogi
+package gi
 
 import (
 	"fmt"

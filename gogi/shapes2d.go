@@ -23,8 +23,15 @@ type GiRect struct {
 // must register all new types so type names can be looked up by name -- e.g., for json
 var KtGiRect = ki.KiTypes.AddType(&GiRect{})
 
-func (g *GiRect) Render2DNode() *GiNode2D {
+func (g *GiRect) Node2D() *GiNode2D {
 	return &g.GiNode2D
+}
+
+func (g *GiRect) InitNode2D(vp *Viewport2D) bool {
+	if g.NodeSig.FindConnectionIndex(vp.This, SignalViewport2D) < 0 {
+		g.NodeSig.Connect(vp.This, SignalViewport2D)
+	}
+	return true
 }
 
 func (g *GiRect) Render2D(vp *Viewport2D) bool {
@@ -57,7 +64,14 @@ type GiCircle struct {
 // must register all new types so type names can be looked up by name -- e.g., for json
 var KtGiCircle = ki.KiTypes.AddType(&GiCircle{})
 
-func (g *GiCircle) Render2DNode() *GiNode2D {
+func (g *GiCircle) InitNode2D(vp *Viewport2D) bool {
+	if g.NodeSig.FindConnectionIndex(vp.This, SignalViewport2D) < 0 {
+		g.NodeSig.Connect(vp.This, SignalViewport2D)
+	}
+	return true
+}
+
+func (g *GiCircle) Node2D() *GiNode2D {
 	return &g.GiNode2D
 }
 
@@ -86,8 +100,15 @@ type GiEllipse struct {
 // must register all new types so type names can be looked up by name -- e.g., for json
 var KtGiEllipse = ki.KiTypes.AddType(&GiEllipse{})
 
-func (g *GiEllipse) Render2DNode() *GiNode2D {
+func (g *GiEllipse) Node2D() *GiNode2D {
 	return &g.GiNode2D
+}
+
+func (g *GiEllipse) InitNode2D(vp *Viewport2D) bool {
+	if g.NodeSig.FindConnectionIndex(vp.This, SignalViewport2D) < 0 {
+		g.NodeSig.Connect(vp.This, SignalViewport2D)
+	}
+	return true
 }
 
 func (g *GiEllipse) Render2D(vp *Viewport2D) bool {
@@ -115,8 +136,15 @@ type GiLine struct {
 // must register all new types so type names can be looked up by name -- e.g., for json
 var KtGiLine = ki.KiTypes.AddType(&GiLine{})
 
-func (g *GiLine) Render2DNode() *GiNode2D {
+func (g *GiLine) Node2D() *GiNode2D {
 	return &g.GiNode2D
+}
+
+func (g *GiLine) InitNode2D(vp *Viewport2D) bool {
+	if g.NodeSig.FindConnectionIndex(vp.This, SignalViewport2D) < 0 {
+		g.NodeSig.Connect(vp.This, SignalViewport2D)
+	}
+	return true
 }
 
 func (g *GiLine) Render2D(vp *Viewport2D) bool {
@@ -143,8 +171,15 @@ type GiPolyline struct {
 // must register all new types so type names can be looked up by name -- e.g., for json
 var KtGiPolyline = ki.KiTypes.AddType(&GiPolyline{})
 
-func (g *GiPolyline) Render2DNode() *GiNode2D {
+func (g *GiPolyline) Node2D() *GiNode2D {
 	return &g.GiNode2D
+}
+
+func (g *GiPolyline) InitNode2D(vp *Viewport2D) bool {
+	if g.NodeSig.FindConnectionIndex(vp.This, SignalViewport2D) < 0 {
+		g.NodeSig.Connect(vp.This, SignalViewport2D)
+	}
+	return true
 }
 
 func (g *GiPolyline) Render2D(vp *Viewport2D) bool {
@@ -174,8 +209,15 @@ type GiPolygon struct {
 // must register all new types so type names can be looked up by name -- e.g., for json
 var KtGiPolygon = ki.KiTypes.AddType(&GiPolygon{})
 
-func (g *GiPolygon) Render2DNode() *GiNode2D {
+func (g *GiPolygon) Node2D() *GiNode2D {
 	return &g.GiNode2D
+}
+
+func (g *GiPolygon) InitNode2D(vp *Viewport2D) bool {
+	if g.NodeSig.FindConnectionIndex(vp.This, SignalViewport2D) < 0 {
+		g.NodeSig.Connect(vp.This, SignalViewport2D)
+	}
+	return true
 }
 
 func (g *GiPolygon) Render2D(vp *Viewport2D) bool {

@@ -24,6 +24,7 @@ import (
 	// "gopkg.in/go-playground/colors.v1"
 	"image/color"
 	"log"
+	"reflect"
 	"strconv"
 	"strings"
 )
@@ -31,20 +32,6 @@ import (
 // basic component node for GoGi
 type GiNode struct {
 	ki.Node
-}
-
-// primary interface for all GiNodes
-type IGiNode interface {
-	// // general gi node initialization
-	// InitGiNode()
-	// check for the display: none (false) property -- though spec says it is not inherited, it affects all children, so in fact it really is -- we terminate render when encountered so we don't need inherits version
-	PropDisplay() bool
-	// check for the visible: none (false) property
-	PropVisible() bool
-	// process properties and any css style sheets (todo) to get an enumerated type as a string -- returns true if value is present
-	PropEnum(name string) (string, bool)
-	// process properties and any css style sheets (todo) to get a color
-	PropColor(name string) (color.Color, bool)
 }
 
 // standard css properties on nodes apply, including visible, etc.
@@ -57,28 +44,36 @@ type GiNode2D struct {
 }
 
 // primary interface for all GiNode2D's
-type IGiNode2D interface {
-	IGiNode
+type GiNode2DI interface {
+	// initialize a node -- setup connections etc -- should be robust to being called repeatedly
+	InitNode2D(vp *Viewport2D) bool
 	// Render graphics into a 2D viewport -- return value indicates whether we should keep going down -- e.g., viewport cuts off there
 	Render2D(vp *Viewport2D) bool
 	// Get the GiNode2D representation of the object
 	Node2D() *GiNode2D
 	// Initialize a new GiNode2D
-	PropLength(name string) (float64, bool)
 }
-
-// todo: viewport has init all nodes
 
 // each node notifies its parent viewport whenever it changes, causing a re-render
-func SignalViewport2D(vp, node ki.Ki, sig ki.SignalType, data interface{}) {
-	// todo: convert vp into a viewport, re-render
-}
-
-// initialize a 2D node -- viewport parent calls recursively
-func (g *GiNode2D) Init2DNode(vp *Viewport2D) {
-	// we notify our parent viewport whenever we have been updated
-	if g.NodeSig.FindConnectionIndex(vp.This, SignalViewport2D) < 0 {
-		g.NodeSig.Connect(vp.This, SignalViewport2D)
+func SignalViewport2D(vpki, node ki.Ki, sig ki.SignalType, data interface{}) {
+	vp, ok := (vpki).(*Viewport2D)
+	if !ok {
+		return
+	}
+	fmt.Printf("viewport: %v rendering due to signal: %v\n", vp.Name, sig)
+	var parVp *Viewport2D
+	parVpki := vp.FindParentByType(reflect.TypeOf(Viewport2D{}))
+	if parVpki != nil {
+		parVp = (parVpki).(*Viewport2D)
+	}
+	if sig == ki.SignalChildAdded {
+		vp.InitNode2D(parVp)
+	}
+	vp.RenderTopLevel()
+	if parVp == nil {
+		vp.DrawIntoWindow() // if no parent, we must be top-level
+	} else {
+		vp.DrawIntoParent(parVp)
 	}
 }
 

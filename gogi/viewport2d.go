@@ -5,14 +5,16 @@
 package gogi
 
 import (
-	// "fmt"
+	"fmt"
 	"github.com/rcoreilly/goki/ki"
 	"golang.org/x/image/font"
 	"image"
 	"image/draw"
 	"image/png"
 	"io"
+	"log"
 	"os"
+	"reflect"
 )
 
 // Viewport2D provides an image and a stack of Paint contexts for drawing onto the image
@@ -93,8 +95,24 @@ func (vp *Viewport2D) HasNoStrokeOrFill() bool {
 	return (!pc.Stroke.On && !pc.Fill.On)
 }
 
-func (g *Viewport2D) Render2DNode() *GiNode2D {
+func (g *Viewport2D) Node2D() *GiNode2D {
 	return &g.GiNode2D
+}
+
+func (vp *Viewport2D) DrawIntoParent(parVp *Viewport2D) {
+	parVp.DrawImage(vp.Pixels, int(vp.ViewBox.Min.X), int(vp.ViewBox.Min.Y))
+
+}
+
+func (vp *Viewport2D) DrawIntoWindow() {
+	wini := vp.FindParentByType(reflect.TypeOf(Window{}))
+	if wini != nil {
+		win := (wini).(*Window)
+		// width, height := win.Win.Size() // todo: update size of our window
+		s := win.Win.Screen()
+		s.CopyRGBA(vp.Pixels, vp.Pixels.Bounds())
+		win.Win.FlushImage()
+	}
 }
 
 // viewport has a special render function that handles all the items below
@@ -104,12 +122,12 @@ func (vp *Viewport2D) Render2D(parVp *Viewport2D) bool {
 		if level == 0 || k == vp.This { // don't process us!
 			return true
 		}
-		r2d, ok := (interface{}(k)).(IGiNode2D)
+		gii, ok := (interface{}(k)).(GiNode2DI)
 		if !ok {
+			// error message already in InitNode2D
 			return true
 		}
-		gi := r2d.Node2D()
-		// fmt.Printf("rendering gi %v\n", gi.Name)
+		gi := gii.Node2D()
 		disp := gi.PropDisplay()
 		if !disp { // go no further
 			return false
@@ -124,21 +142,52 @@ func (vp *Viewport2D) Render2D(parVp *Viewport2D) bool {
 		cont := true // whether to continue down the stack at this point
 		vis := gi.PropVisible()
 		if vis {
-			// todo: might want to encapsulate fill, stroke settings if a leaf render obj?
+			if gi.IsLeaf() { // each terminal leaf gets its own context
+				vp.PushNewPaint()
+			}
 			vp.SetPaintFromNode(gi)
 			gi.XForm = vp.CurPaint().XForm // cache current xform
-			cont = r2d.Render2D(vp)        // if this is itself a vp, we need to stop
+			cont = gii.Render2D(vp)        // if this is itself a vp, we need to stop
+			if gi.IsLeaf() {
+				vp.PopPaint()
+			}
 		} else {
 			gi.XForm = vp.CurPaint().XForm // cache current xform even if not visible?  maybe nil?
 		}
 		return cont
 	})
-	// todo: at this point we should compost ourselves into parent parVp if it is non-null!
+	if parVp != nil {
+		vp.DrawIntoParent(parVp)
+	} else { // top-level, try drawing into window
+		vp.DrawIntoWindow()
+	}
+	return false // we tell parent render to not continue down any further -- we just did it all
+}
+
+// viewport has a special render function that handles all the items below
+func (vp *Viewport2D) InitNode2D(parVp *Viewport2D) bool {
+	vp.FunDown(0, vp, func(k ki.Ki, level int, d interface{}) bool {
+		if level == 0 || k == vp.This { // don't process us!
+			return true
+		}
+		gii, ok := (interface{}(k)).(GiNode2DI)
+		if !ok {
+			log.Printf("GiNode %v in Viewport2D does NOT implement GiNode2DI interface -- it should!\n", k.PathUnique())
+			return true
+		}
+		cont := gii.InitNode2D(vp)
+		return cont
+
+	})
 	return false // we tell parent render to not continue down any further -- we just did it all
 }
 
 func (vp *Viewport2D) RenderTopLevel() {
 	vp.Render2D(nil) // we are the top
+}
+
+func (vp *Viewport2D) InitTopLevel() {
+	vp.InitNode2D(nil) // we are the top
 }
 
 // update the Paint Stroke and Fill from the properties of a given node -- because Paint stack captures all the relevant inheritance, this does NOT look for inherited properties

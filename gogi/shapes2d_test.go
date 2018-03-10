@@ -79,7 +79,10 @@ func TestShapesAll(t *testing.T) {
 		polygon1.Points = append(polygon1.Points, Point2D{x1, y1})
 	}
 
+	parent.InitTopLevel()
 	parent.Clear()
-	parent.RenderTopLevel()
+	// parent.RenderTopLevel()
+	polygon1.UpdateStart()
+	polygon1.UpdateEnd(false) // only update highest
 	parent.SavePNG("test_shape_all.png")
 }

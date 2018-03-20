@@ -13,6 +13,8 @@ GoDoc documentation: https://godoc.org/github.com/rcoreilly/goki/ki
 
 # Motivation
 
+*Note: the following is an attempt at rationalizing why I'm ~wasting~ investing so much of my time reinventing every wheel.  Basically, esthetics matter.  Programming is an emotionally-driven creative act, and things like elegance and beauty matter.*
+
 The **Tree** is the most powerful data structure in programming, and it underlies all the best tech, such as the WWW (the DOM is a tree structure), scene graphs for 3D and 2D graphics systems, JSON, XML, SVG, filesystems, programs themselves, etc.  GoKi provides a powerful tree container type, that can support all of these things just by embedding and extending the `Node` struct type that implements the `Ki` (Ki = Tree in Japanese) interface.
 
 Much like LISP (a programming language built around the list data type), the key idea here is to create a comprehensive ecosystem for Go built around Trees (GoKi) -- an awesome, simple programming language with an awesome infrastructure for doing everything you typically need to do with Trees.

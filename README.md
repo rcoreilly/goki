@@ -1,15 +1,16 @@
 # goki
 Go language (golang) full strength tree structures (ki = tree in Japanese)
 
-GoDoc documentation: https://godoc.org/github.com/rcoreilly/goki/ki
+[![Go Report Card](https://goreportcard.com/badge/github.com/rcoreilly/goki)](https://goreportcard.com/report/github.com/rcoreilly/goki)
+[![GoDoc](https://godoc.org/github.com/rcoreilly/goki?status.svg)](http://godoc.org/github.com/rcoreilly/goki)
 
 # Code Map
 
 * `package ki` -- core `Ki` interface (`ki.go`) and `Node` struct (`node.go`), plus other supporting players
 * `package gi` -- GoGi Graphical Interface based on 2D and 3D scenegraph using Ki trees
-* `package ip` -- Interactive Parsing system
-* `package di` -- Drawing / Design Interface based on gi -- Inkscape / GUI designer all in one
-* `package wi` -- Web Interface based on gi
+* `package ip` -- TBD: Interactive Parsing system
+* `package di` -- TBD: Drawing / Design Interface based on gi -- Inkscape / GUI designer all in one
+* `package wi` -- TBD: Web Interface based on gi
 
 # Motivation
 

@@ -3,8 +3,7 @@ Part of the GoKi Go language (golang) full strength tree structure system (ki = 
 
 `package ki` -- core `Ki` interface (`ki.go`) and `Node` struct (`node.go`), plus other supporting players.
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/rcoreilly/goki/ki)](https://goreportcard.com/report/github.com/rcoreilly/goki/ki)
-[![GoDoc](https://godoc.org/github.com/rcoreilly/goki/ki?status.svg)](http://godoc.org/github.com/rcoreilly/goki/ki)
+**THIS IS ARCHIVED -- active version at: https://github.com/goki**
 
 A `Ki` tree is recursively composed of Ki `Node` structs, in a one-Parent / multiple-Child structure.  The typical use is to embed Node in other structs that then implement specific tree-based functionality.  See other packages in GoKi for examples, and top-level README in GoKi for overall motivation and design.
 

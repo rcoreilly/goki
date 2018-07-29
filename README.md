@@ -1,8 +1,7 @@
 # goki
 Go language (golang) full strength tree structures (ki = tree in Japanese)
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/rcoreilly/goki)](https://goreportcard.com/report/github.com/rcoreilly/goki)
-[![GoDoc](https://godoc.org/github.com/rcoreilly/goki?status.svg)](http://godoc.org/github.com/rcoreilly/goki)
+**THIS IS ARCHIVED -- active version at: https://github.com/goki**
 
 # Code Map
 
